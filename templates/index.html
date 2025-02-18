@@ -204,6 +204,32 @@
             text-align: center;
             margin: 1rem 0;
         }
+        /* Tab styling */
+        .tab-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+        }
+
+        .tab.active {
+            background-color: #357abd;
+        }
+
+        .hidden {
+            display: none;
+        }
+
     </style>
     
 </head>
@@ -248,10 +274,28 @@
                 <button onclick="generateDiagram()">Generate Diagram</button>
             </div>
             <div class="section-title">Diagram Output</div>
+
             <div class="output-container">
-                <div id="diagramOutput" class="output"></div>
+                <!-- Tab Navigation -->
+                <div class="tab-container">
+                    <button id="diagramTab" class="tab active" onclick="switchTab('diagram')">Diagram</button>
+                    <button id="codeTab" class="tab" onclick="switchTab('code')">Code</button>
+                </div>
+
+                <!-- Diagram Display -->
+                <div id="diagramView" class="output">
+                    <div id="diagramOutput" class="mermaid"></div>
+                </div>
+
+                <!-- Code Display -->
+                <div id="codeView" class="output hidden">
+                    <pre id="mermaidCode"></pre>
+                    <button onclick="copyMermaidCode()">Copy Code</button>
+                </div>
+
                 <div class="resize-handle"></div>
             </div>
+
             <div class="button-group">
                 <button onclick="downloadDiagram()">Download Diagram</button>  <!-- Moved here -->
             </div>
@@ -556,6 +600,89 @@
                 URL.revokeObjectURL(svgUrl);
             }
         }
+        function switchTab(tab) {
+            const diagramView = document.getElementById('diagramView');
+            const codeView = document.getElementById('codeView');
+            const diagramTab = document.getElementById('diagramTab');
+            const codeTab = document.getElementById('codeTab');
+
+            if (tab === 'diagram') {
+                diagramView.classList.remove('hidden');
+                codeView.classList.add('hidden');
+                diagramTab.classList.add('active');
+                codeTab.classList.remove('active');
+            } else {
+                diagramView.classList.add('hidden');
+                codeView.classList.remove('hidden');
+                diagramTab.classList.remove('active');
+                codeTab.classList.add('active');
+            }
+        }
+
+        // Copy Mermaid code to clipboard
+        function copyMermaidCode() {
+            const code = document.getElementById('mermaidCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Mermaid code copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy code:', err);
+            });
+        }
+
+        // Generate and display the Mermaid diagram with code
+        function generateDiagram() {
+            const diagramType = document.getElementById('diagramType').value;
+            const instructions = document.getElementById('diagramInstructions').value;
+            const outlineDiv = document.getElementById('outlineOutput');
+            const diagramOutput = document.getElementById('diagramOutput');
+            const codeOutput = document.getElementById('mermaidCode');
+
+            const outlineContent = outlineDiv.getAttribute('data-markdown');
+            if (!outlineContent) {
+                alert('Please generate an outline first.');
+                return;
+            }
+
+            if (!diagramType) {
+                alert('Please select a diagram type.');
+                return;
+            }
+
+            // Show loading state
+            diagramOutput.innerText = 'Generating diagram...';
+
+            fetch('/generate-diagram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: diagramType,
+                    instructions: instructions,
+                    outline: outlineContent
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    diagramOutput.innerHTML = `<div class="error">${data.error}</div>`;
+                } else {
+                    // Populate Mermaid code
+                    codeOutput.textContent = data.result;
+
+                    // Render the Mermaid diagram
+                    diagramOutput.innerHTML = `<div class="mermaid">${data.result}</div>`;
+                    mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+
+                    // Reset to Diagram tab
+                    switchTab('diagram');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                diagramOutput.innerHTML = `<div class="error">An error occurred while generating the diagram</div>`;
+            });
+}
+
+
    </script>
 </body>
 </html>

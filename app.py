@@ -3,7 +3,6 @@ from outline import generate_response, generate_diagram
 
 app = Flask(__name__)
 
-# Add to app.py
 from docx import Document
 from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
