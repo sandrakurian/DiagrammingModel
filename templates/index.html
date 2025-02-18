@@ -6,6 +6,8 @@
     <title>Document Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/9.3.0/mermaid.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <style>
         :root {
             --primary-color: #4a90e2;
@@ -202,7 +204,34 @@
             text-align: center;
             margin: 1rem 0;
         }
+        /* Tab styling */
+        .tab-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+        }
+
+        .tab.active {
+            background-color: #357abd;
+        }
+
+        .hidden {
+            display: none;
+        }
+
     </style>
+    
 </head>
 <body>
     
@@ -245,11 +274,33 @@
                 <button onclick="generateDiagram()">Generate Diagram</button>
             </div>
             <div class="section-title">Diagram Output</div>
+
             <div class="output-container">
-                <div id="diagramOutput" class="output"></div>
+                <!-- Tab Navigation -->
+                <div class="tab-container">
+                    <button id="diagramTab" class="tab active" onclick="switchTab('diagram')">Diagram</button>
+                    <button id="codeTab" class="tab" onclick="switchTab('code')">Code</button>
+                </div>
+
+                <!-- Diagram Display -->
+                <div id="diagramView" class="output">
+                    <div id="diagramOutput" class="mermaid"></div>
+                </div>
+
+                <!-- Code Display -->
+                <div id="codeView" class="output hidden">
+                    <pre id="mermaidCode"></pre>
+                    <button onclick="copyMermaidCode()">Copy Code</button>
+                </div>
+
                 <div class="resize-handle"></div>
             </div>
+
+            <div class="button-group">
+                <button onclick="downloadDiagram()">Download Diagram</button>  <!-- Moved here -->
+            </div>
         </div>
+
     </div>
 
     
@@ -436,6 +487,202 @@
                 }
             });
         });
-    </script>
+    
+        
+        function downloadDiagram() {
+            const diagramContainer = document.querySelector("#diagramOutput .mermaid");
+            const svgElement = diagramContainer ? diagramContainer.querySelector("svg") : null;
+
+            if (!svgElement) {
+                alert("No diagram to download. Please generate a diagram first.");
+                return;
+            }
+
+            // Clone the SVG to avoid modifying the original
+            const clonedSvg = svgElement.cloneNode(true);
+            
+            // Ensure the SVG has necessary namespaces
+            clonedSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+            clonedSvg.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+
+            // Get the dimensions more reliably
+            let width, height;
+            if (svgElement.viewBox.baseVal.width > 0) {
+                // Use viewBox if available
+                width = svgElement.viewBox.baseVal.width;
+                height = svgElement.viewBox.baseVal.height;
+            } else {
+                // Fallback to SVG dimensions or container dimensions
+                width = svgElement.getBoundingClientRect().width || diagramContainer.offsetWidth;
+                height = svgElement.getBoundingClientRect().height || diagramContainer.offsetHeight;
+            }
+
+            // Ensure reasonable dimensions with padding
+            width = Math.max(width, 100) + 40;
+            height = Math.max(height, 100) + 40;
+
+            // Set proper dimensions for export
+            clonedSvg.setAttribute("width", width);
+            clonedSvg.setAttribute("height", height);
+            clonedSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+            // Convert the SVG into a string
+            const serializer = new XMLSerializer();
+            let svgString = serializer.serializeToString(clonedSvg);
+
+            // Create an SVG blob
+            const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+            const svgUrl = URL.createObjectURL(svgBlob);
+
+            // First try the direct SVG download as fallback
+            const link = document.createElement("a");
+            link.href = svgUrl;
+            link.download = "diagram.svg";
+            
+            // Now try PNG conversion with error handling
+            try {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                
+                img.onload = function () {
+                    // Create canvas with appropriate size
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    
+                    // White background
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw SVG image onto Canvas
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    try {
+                        // Try to get PNG data URL
+                        const pngUrl = canvas.toDataURL("image/png");
+                        link.href = pngUrl;
+                        link.download = "diagram.png";
+                    } catch (canvasError) {
+                        console.error("Canvas export error:", canvasError);
+                        // Fallback to SVG if PNG creation fails
+                        alert("Could not create PNG. Downloading as SVG instead.");
+                    }
+                    
+                    // Trigger download
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // Cleanup
+                    URL.revokeObjectURL(svgUrl);
+                };
+                
+                img.onerror = function (err) {
+                    console.error("Image loading error:", err);
+                    alert("Error processing diagram. Downloading as SVG instead.");
+                    // Fallback to SVG download
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(svgUrl);
+                };
+                
+                img.src = svgUrl;
+                
+            } catch (error) {
+                console.error("Download error:", error);
+                alert("Error during download. Downloading as SVG instead.");
+                // Final fallback
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(svgUrl);
+            }
+        }
+        function switchTab(tab) {
+            const diagramView = document.getElementById('diagramView');
+            const codeView = document.getElementById('codeView');
+            const diagramTab = document.getElementById('diagramTab');
+            const codeTab = document.getElementById('codeTab');
+
+            if (tab === 'diagram') {
+                diagramView.classList.remove('hidden');
+                codeView.classList.add('hidden');
+                diagramTab.classList.add('active');
+                codeTab.classList.remove('active');
+            } else {
+                diagramView.classList.add('hidden');
+                codeView.classList.remove('hidden');
+                diagramTab.classList.remove('active');
+                codeTab.classList.add('active');
+            }
+        }
+
+        // Copy Mermaid code to clipboard
+        function copyMermaidCode() {
+            const code = document.getElementById('mermaidCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Mermaid code copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy code:', err);
+            });
+        }
+
+        // Generate and display the Mermaid diagram with code
+        function generateDiagram() {
+            const diagramType = document.getElementById('diagramType').value;
+            const instructions = document.getElementById('diagramInstructions').value;
+            const outlineDiv = document.getElementById('outlineOutput');
+            const diagramOutput = document.getElementById('diagramOutput');
+            const codeOutput = document.getElementById('mermaidCode');
+
+            const outlineContent = outlineDiv.getAttribute('data-markdown');
+            if (!outlineContent) {
+                alert('Please generate an outline first.');
+                return;
+            }
+
+            if (!diagramType) {
+                alert('Please select a diagram type.');
+                return;
+            }
+
+            // Show loading state
+            diagramOutput.innerText = 'Generating diagram...';
+
+            fetch('/generate-diagram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: diagramType,
+                    instructions: instructions,
+                    outline: outlineContent
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    diagramOutput.innerHTML = `<div class="error">${data.error}</div>`;
+                } else {
+                    // Populate Mermaid code
+                    codeOutput.textContent = data.result;
+
+                    // Render the Mermaid diagram
+                    diagramOutput.innerHTML = `<div class="mermaid">${data.result}</div>`;
+                    mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+
+                    // Reset to Diagram tab
+                    switchTab('diagram');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                diagramOutput.innerHTML = `<div class="error">An error occurred while generating the diagram</div>`;
+            });
+}
+
+
+   </script>
 </body>
 </html>
