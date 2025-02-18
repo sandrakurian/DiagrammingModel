@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/9.3.0/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --background-color: #f5f7fa;
+            --border-color: #e1e4e8;
+            --text-color: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--text-color);
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+            min-height: 100px;
+            margin-bottom: 1rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        .output-container {
+            position: relative;
+            margin-top: 1rem;
+        }
+
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            cursor: se-resize;
+            background: linear-gradient(135deg, transparent 50%, var(--primary-color) 50%);
+            border-radius: 0 0 6px 0;
+        }
+
+        .output {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-y: auto;
+            min-height: 100px;
+            max-height: 600px;
+            resize: vertical;
+            border: 1px solid var(--border-color);
+        }
+
+        .output img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .output h1,
+        .output h2,
+        .output h3,
+        .output h4,
+        .output h5,
+        .output h6 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            color: var(--text-color);
+        }
+
+        .output ul,
+        .output ol {
+            padding-left: 2em;
+        }
+
+        .output code {
+            background: #e9ecef;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .output pre {
+            background: #e9ecef;
+            padding: 1em;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        .output pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            border-radius: 4px;
+            background-color: #f8d7da;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .diagram-select {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            background-color: white;
+            color: var(--text-color);
+        }
+
+        .diagram-instructions {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+        }
+
+        /* Style for Mermaid diagrams */
+        .output .mermaid {
+            text-align: center;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+        <h1>Document Generator</h1>
+
+        <!-- Original outline section -->
+        <div class="section">
+            <div class="section-title">Document Input</div>
+            <textarea id="inputText" placeholder="Enter your text here..."></textarea>
+            <div class="button-group">
+                <button onclick="generateOutline()">Generate Outline</button>
+            </div>
+            <div class="section-title">Output</div>
+            <div class="output-container">
+                <div id="outlineOutput" class="output"></div>
+                <div class="resize-handle"></div>
+            </div>
+            <div class="button-group">
+                <button onclick="downloadOutline()">Download Outline</button>
+            </div>
+        </div>
+
+        <!-- New diagram section -->
+        <div class="section">
+            <div class="section-title">Diagram Generator</div>
+            <div class="input-group">
+                <select id="diagramType" class="diagram-select">
+                    <option value="">Select Diagram Type</option>
+                    <option value="flowchart">Flow Chart</option>
+                    <option value="sequence">Sequence Diagram</option>
+                    <option value="class">Class Diagram</option>
+                    <option value="state">State Diagram</option>
+                    <option value="er">Entity Relationship (ER) Diagram</option>
+                    <option value="gantt">Gantt Chart</option>
+                </select>
+                <textarea id="diagramInstructions" class="diagram-instructions" placeholder="Enter additional instructions (optional)..."></textarea>
+            </div>
+            <div class="button-group">
+                <button onclick="generateDiagram()">Generate Diagram</button>
+            </div>
+            <div class="section-title">Diagram Output</div>
+            <div class="output-container">
+                <div id="diagramOutput" class="output"></div>
+                <div class="resize-handle"></div>
+            </div>
+        </div>
+    </div>
+
+    
+
+    <script>
+        // Initialize mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose'
+        });
+
+        // Configure marked options
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: true
+        });
+
+    // Add this function to your existing JavaScript
+    function downloadOutline() {
+        const outputDiv = document.getElementById('outlineOutput');
+        const content = outputDiv.getAttribute('data-markdown');
+        
+        if (!content) {
+            outputDiv.innerHTML = '<div class="error">No content to download. Please generate an outline first.</div>';
+            return;
+        }
+        
+        fetch('/download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'outline.docx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            outputDiv.innerHTML = `<div class="error">An error occurred while downloading the outline</div>`;
+        });
+    }
+
+    // Modify the generateOutline function to store the markdown content
+    function generateOutline() {
+        const inputText = document.getElementById('inputText').value;
+        const outputDiv = document.getElementById('outlineOutput');
+        
+        if (!inputText.trim()) {
+            outputDiv.innerHTML = '<div class="error">Please enter some text first</div>';
+            return;
+        }
+        
+        outputDiv.innerText = 'Generating outline...';
+        
+        fetch('/outline', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ outline: inputText })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                outputDiv.innerHTML = `<div class="error">${data.error}</div>`;
+            } else {
+                // Store the original markdown content
+                outputDiv.setAttribute('data-markdown', data.result);
+                // Convert markdown to HTML and display
+                outputDiv.innerHTML = marked.parse(data.result);
+                // Re-render any mermaid diagrams
+                mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            outputDiv.innerHTML = `<div class="error">An error occurred while generating the outline</div>`;
+        });
+    }
+        
+        // Initialize resizable output
+        const output = document.querySelector('.output');
+        const resizeHandle = document.querySelector('.resize-handle');
+
+        let isResizing = false;
+        let initialHeight;
+        let initialY;
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            initialHeight = output.offsetHeight;
+            initialY = e.clientY;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            const deltaY = e.clientY - initialY;
+            const newHeight = initialHeight + deltaY;
+            
+            if (newHeight >= 100) { // Minimum height
+                output.style.height = `${newHeight}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+        });
+
+        // Add these functions to your existing JavaScript
+        function generateDiagram() {
+            const diagramType = document.getElementById('diagramType').value;
+            const instructions = document.getElementById('diagramInstructions').value;
+            const outlineDiv = document.getElementById('outlineOutput');
+            const outputDiv = document.getElementById('diagramOutput');
+            
+            // Check if outline was generated first
+            const outlineContent = outlineDiv.getAttribute('data-markdown');
+            if (!outlineContent) {
+                outputDiv.innerHTML = '<div class="error">Please generate an outline first</div>';
+                return;
+            }
+            
+            if (!diagramType) {
+                outputDiv.innerHTML = '<div class="error">Please select a diagram type</div>';
+                return;
+            }
+            
+            // Show loading state
+            outputDiv.innerText = 'Generating diagram...';
+            
+            fetch('/generate-diagram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    type: diagramType,
+                    instructions: instructions,
+                    outline: outlineContent  // Use the stored markdown content
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    outputDiv.innerHTML = `<div class="error">${data.error}</div>`;
+                } else {
+                    // Store the original content
+                    outputDiv.setAttribute('data-content', data.result);
+                    // Add the mermaid class to the output div
+                    outputDiv.innerHTML = `<div class="mermaid">${data.result}</div>`;
+                    // Re-render mermaid diagram
+                    mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                outputDiv.innerHTML = `<div class="error">An error occurred while generating the diagram</div>`;
+            });
+        }
+       
+        
+        
+        // Add event listener for diagram type selection
+        document.addEventListener('DOMContentLoaded', function() {
+            const diagramSelect = document.getElementById('diagramType');
+            const instructionsTextarea = document.getElementById('diagramInstructions');
+            
+            diagramSelect.addEventListener('change', function() {
+                if (this.value) {
+                    instructionsTextarea.placeholder = `Enter additional instructions for your ${this.options[this.selectedIndex].text.toLowerCase()} (optional)...`;
+                } else {
+                    instructionsTextarea.placeholder = 'Enter additional instructions (optional)...';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
