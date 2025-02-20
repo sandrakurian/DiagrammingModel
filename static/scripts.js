@@ -72,4 +72,42 @@ function copyMermaidCode() {
     });
 }
 
-// Additional script functions remain unchanged
+function generateDiagram() {
+    const diagramType = document.getElementById('diagramType').value;
+    const instructions = document.getElementById('diagramInstructions').value;
+    const outputDiv = document.getElementById('diagramOutput');
+
+    if (!diagramType) {
+        outputDiv.innerHTML = '<div class="error">Please select a diagram type</div>';
+        return;
+    }
+
+    outputDiv.innerText = 'Generating diagram...';
+
+    fetch('/generate-diagram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: diagramType, instructions, outline: document.getElementById('outlineOutput').innerText })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            outputDiv.innerHTML = `<div class="error">${data.error}</div>`;
+        } else {
+            document.getElementById('mermaidCode').textContent = data.result;
+            outputDiv.innerHTML = `<div class="mermaid">${data.result}</div>`;
+            
+            // Ensure Mermaid.js reprocesses the diagram
+            mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        outputDiv.innerHTML = `<div class="error">An error occurred while generating the diagram</div>`;
+    });
+}
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+});
